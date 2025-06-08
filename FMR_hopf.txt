@@ -1,0 +1,76 @@
+//mumax 3.10 windows_amd64 go1.11 (gc)
+//CUDA 12060 NVIDIA GeForce RTX 4080(16375MB) cc8.9 , using CC 75  PTX
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: DMI_effect_sinc_II0a_.out/
+OutputFormat = OVF2_TEXT
+OutputFormat = OVF2_TEXT
+OutputFormat = OVF2_TEXT
+nx1 := 128
+ny1 := 128
+nz1 := 64
+setgridsize(nx1, ny1, nz1)
+setcellsize(2e-9, 2e-9, 2e-9)
+A := 2.19 * 1e-12
+DD := 0.395 * 1e-3
+L := 70 * 1e-9
+initial := 1
+final := 46
+c1 := (layer(0))
+c2 := circle(2.86 * L).intersect(layers(initial, final))
+c3 := (layer(final))
+Enabledemag = true
+setgeom(c1.add(c2).add(c3))
+defregion(1, c1)
+defregion(2, c2)
+defregion(3, c3)
+vortex_cone := newVectorMask(nx1, ny1, nz1)
+for i := 0; i < nx1; i++ {
+	for j := 0; j < ny1; j++ {
+		for k := initial; k <= final; k++ {
+			r := index2coord(i, j, k)
+			x := r.X()
+			y := r.Y()
+			z := r.Z()
+			phi := atan2(y, x)
+			rho := pow(x*x+y*y, .5)
+			vortex_cone.setVector(i, j, k, vector(sin((2*pi*rho/L))*sin(phi), -sin((2*pi*rho/L))*cos(phi), cos((2*pi*rho/L))))
+		}
+	}
+}
+m.SetArray(vortex_cone)
+m.setregion(1, uniform(0, 0, 1))
+m.setregion(3, uniform(0, 0, 1))
+Aex = A
+Msat = 384e3
+ku1.setregion(1, .8e6)
+anisU.setregion(1, vector(0, 0, 1))
+ku1.setregion(2, 0e0)
+anisU.setregion(2, vector(0, 0, 0))
+Dbulk.setregion(2, DD)
+ku1.setregion(3, .8e6)
+anisU.setregion(3, vector(0, 0, 1))
+saveas(m, "initial_handle")
+alpha = .001
+relax()
+minimize()
+saveas(m, "final_y_t")
+run(2e-9)
+saveas(m, "final")
+f := 50e9
+ho := 5e-3
+to := 1e-9
+B_ext.setregion(2, vector(ho*sinc(2*pi*(t-to)*f), 0, 0))
+dtt := 1 / (2.1 * f)
+autosave(m, dtt)
+run(40e-9)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation: //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+//   * Exl et al., J. Appl. Phys. 115, 17D118 (2014).
